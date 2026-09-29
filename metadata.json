@@ -1,0 +1,6 @@
+{
+  "name": "Wello - Personal Wealth Manager",
+  "description": "Your Wealth Manager, Before You're Wealthy. Real AI-powered personal financial management for Indian users.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
