@@ -38,6 +38,7 @@ export default function App() {
   const [showCashModal, setShowCashModal] = useState(false);
   const [showEveningCashReminder, setShowEveningCashReminder] = useState(true);
   const [triggerSafeToSpendModal, setTriggerSafeToSpendModal] = useState(0);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'offline'>('synced');
 
   // Keyboard shortcut (Cmd+K or Ctrl+K) to open features directory
   useEffect(() => {
@@ -109,7 +110,18 @@ export default function App() {
       lastUpdated: new Date().toISOString(),
     };
     setProfile(updated);
-    await saveUserProfile(user.email, updated);
+    setSyncStatus('saving');
+    const ok = await saveUserProfile(user.email, updated);
+    setSyncStatus(ok ? 'synced' : 'offline');
+  };
+
+  // Manual save and sync trigger
+  const handleManualSync = async (): Promise<boolean> => {
+    if (!profile || !user) return false;
+    setSyncStatus('saving');
+    const ok = await saveUserProfile(user.email, profile);
+    setSyncStatus(ok ? 'synced' : 'offline');
+    return ok;
   };
 
   // Add Cash Expense
@@ -226,6 +238,8 @@ export default function App() {
         onSelectTab={setCurrentTab}
         onOpenFeaturesDrawer={() => setShowFeaturesDrawer(true)}
         userName={user.name}
+        syncStatus={syncStatus}
+        onManualSync={handleManualSync}
       />
 
       <main className="transition-opacity duration-200">
@@ -282,6 +296,7 @@ export default function App() {
             onUpdateProfile={handleUpdateProfile}
             onSignOut={handleSignOut}
             onDeleteAccount={handleDeleteAccount}
+            onSyncNow={handleManualSync}
           />
         )}
       </main>

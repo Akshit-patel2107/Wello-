@@ -1,0 +1,34 @@
+{
+  "akshitpatel2107@gmail.com": {
+    "monthlyIncome": 150000,
+    "incomeSources": [
+      {
+        "id": "1",
+        "name": "Primary Salary",
+        "amount": 150000,
+        "type": "salary"
+      }
+    ],
+    "monthlyExpenses": 65000,
+    "expenseCategories": {
+      "Food": 20000,
+      "Transport": 10000,
+      "Bills": 15000,
+      "Shopping": 10000,
+      "Health": 5000,
+      "Entertainment": 5000,
+      "Education": 0,
+      "Other": 0
+    },
+    "currentSavings": 400000,
+    "emergencyFund": 300000,
+    "loans": [],
+    "goals": [],
+    "investments": [],
+    "familyMembers": [],
+    "cashExpenses": [],
+    "progressiveDetails": {},
+    "dismissedPopups": [],
+    "lastSyncedAt": "2026-09-29T14:41:59.107Z"
+  }
+}

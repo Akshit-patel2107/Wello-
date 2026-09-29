@@ -313,7 +313,7 @@ export const MoneyView: React.FC<MoneyViewProps> = ({
       : '0.00';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-4 pb-28 space-y-6">
+    <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-28 space-y-6">
       {/* Sub-nav tabs */}
       <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl overflow-x-auto no-scrollbar">
         {[

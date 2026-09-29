@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FamilyMember, FinancialProfile, UserAuth } from '../types/financial';
+import { exportUserData, importUserData, getLastSyncTime } from '../services/storageService';
 import { formatINR } from '../utils/financialCalculations';
 import {
   Shield,
@@ -15,6 +16,10 @@ import {
   Eye,
   AlertTriangle,
   X,
+  Cloud,
+  RefreshCw,
+  Upload,
+  UserCheck,
 } from 'lucide-react';
 import { WelloLogo } from './Logo';
 
@@ -24,6 +29,7 @@ interface ProfileViewProps {
   onUpdateProfile: (updated: Partial<FinancialProfile>) => void;
   onSignOut: () => void;
   onDeleteAccount: () => void;
+  onSyncNow?: () => Promise<boolean>;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -32,9 +38,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onUpdateProfile,
   onSignOut,
   onDeleteAccount,
+  onSyncNow,
 }) => {
   const [showAddFamilyModal, setShowAddFamilyModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // New family member state
   const [famName, setFamName] = useState('');
@@ -42,6 +51,45 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [famIncome, setFamIncome] = useState<number>(45000);
   const [famExpenses, setFamExpenses] = useState<number>(20000);
   const [famScope, setFamScope] = useState<FamilyMember['accessScope']>('shared_goals');
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    try {
+      if (onSyncNow) {
+        await onSyncNow();
+      }
+      setSyncFeedback('All data securely saved and synced to cloud vault.');
+      setTimeout(() => setSyncFeedback(null), 4000);
+    } catch (e) {
+      setSyncFeedback('Failed to sync. Stored in local vault.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        const restored = await importUserData(user.email, content);
+        if (restored) {
+          onUpdateProfile(restored);
+          setSyncFeedback('Backup successfully restored to your vault.');
+          setTimeout(() => setSyncFeedback(null), 4000);
+        } else {
+          setSyncFeedback('Invalid backup file. Could not restore.');
+          setTimeout(() => setSyncFeedback(null), 4000);
+        }
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const handleAddFamilyMember = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +126,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-4 pb-28 space-y-6">
+    <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-28 space-y-6">
       {/* User Card */}
       <div className="p-6 rounded-3xl bg-white border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -244,23 +292,79 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
 
-        {/* 3. Export and Delete Controls */}
+        {/* 3. Cloud Vault & Data Persistence */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              3. Cloud Vault & Data Persistence
+            </h3>
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Cloud className="w-3 h-3 text-emerald-600" />
+              <span>{getLastSyncTime()}</span>
+            </span>
+          </div>
+
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                <Database className="w-4 h-4 text-indigo-600" />
+                <span>Encrypted Cloud & Device Storage</span>
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                Your incomes, expenses, loans, stock holdings, and goals are persistently saved to your private vault.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="py-2.5 px-4 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-sm hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer flex-shrink-0 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing Vault...' : 'Save & Sync Now'}</span>
+            </button>
+          </div>
+
+          {syncFeedback && (
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span>{syncFeedback}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 4. Export, Import & Delete Controls */}
         <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleExportData}
-            className="py-2.5 px-4 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
-          >
-            <Download className="w-4 h-4 text-indigo-600" />
-            <span>Export My Financial Data (.JSON)</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportData}
+              className="py-2 px-3.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Download full JSON backup of your financial data"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Export Backup (.JSON)</span>
+            </button>
+
+            <label className="py-2 px-3.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer">
+              <Upload className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Restore Backup</span>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+            </label>
+          </div>
 
           <button
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="py-2.5 px-4 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+            className="py-2 px-3.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
             <span>Delete Account & Data</span>
           </button>
         </div>

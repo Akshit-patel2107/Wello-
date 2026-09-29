@@ -65,7 +65,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const totalLoanEmi = profile.loans.reduce((sum, l) => sum + l.emi, 0);
 
   return (
-    <div className="space-y-6 pb-24 max-w-4xl mx-auto px-4 sm:px-6 pt-4">
+    <div className="space-y-6 pb-24 max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 pt-4">
       {/* 1. Header Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>

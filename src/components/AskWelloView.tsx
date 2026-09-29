@@ -75,7 +75,7 @@ export const AskWelloView: React.FC<AskWelloViewProps> = ({ profile, userName })
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-4 pb-28 flex flex-col h-[calc(100vh-5rem)]">
+    <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-28 flex flex-col h-[calc(100vh-5rem)]">
       {/* Top Banner */}
       <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex items-center justify-between gap-4 mb-4 flex-shrink-0">
         <div className="flex items-center gap-3">

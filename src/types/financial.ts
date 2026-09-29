@@ -3,7 +3,7 @@ export interface UserAuth {
   email: string;
   name: string;
   avatarUrl?: string;
-  loginMethod: 'google';
+  loginMethod: 'google' | 'email' | 'demo';
   createdAt: string;
 }
 
