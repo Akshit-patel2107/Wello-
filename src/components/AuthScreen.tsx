@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { WelloLogo } from './Logo';
 import { UserAuth } from '../types/financial';
+import { signInWithGoogle } from '../services/firebase';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -22,16 +23,16 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   onAuthenticated,
-  defaultEmail = 'akshitpatel2107@gmail.com',
+  defaultEmail = '',
 }) => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   
-  // Form fields
+  // Form fields (blank by default for privacy and clean login)
   const [emailInput, setEmailInput] = useState(defaultEmail);
-  const [nameInput, setNameInput] = useState('Akshit Patel');
-  const [passwordInput, setPasswordInput] = useState('password123');
-  const [confirmPasswordInput, setConfirmPasswordInput] = useState('password123');
+  const [nameInput, setNameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   
@@ -86,7 +87,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     }, 600);
   };
 
-  // Handle Google OAuth simulation
+  // Real Firebase Google OAuth Sign In
+  const handleGoogleSignInClick = async () => {
+    setIsProcessing(true);
+    setErrorMsg('');
+    try {
+      const user = await signInWithGoogle();
+      onAuthenticated(user);
+    } catch (error: any) {
+      console.warn('Direct popup error, opening Gmail authorization dialog:', error);
+      // If popup fails or is blocked in iframe, open the seamless Gmail login modal
+      setShowGoogleModal(true);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Gmail Authentication fallback
   const handleConfirmGoogleAuth = (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput.trim() || !emailInput.includes('@')) {
@@ -115,7 +132,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setIsProcessing(false);
       setShowGoogleModal(false);
       onAuthenticated(user);
-    }, 700);
+    }, 500);
   };
 
   // Instant Demo login
@@ -209,12 +226,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
             {/* Quick 1-Click Google Sign In */}
             <button
-              onClick={() => {
-                setShowGoogleModal(true);
-                setErrorMsg('');
-              }}
+              onClick={handleGoogleSignInClick}
+              disabled={isProcessing}
               type="button"
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 font-semibold text-sm shadow-2xs hover:shadow-xs transition-all duration-150 active:scale-[0.99] cursor-pointer mb-5 group"
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 font-semibold text-sm shadow-2xs hover:shadow-xs transition-all duration-150 active:scale-[0.99] cursor-pointer mb-5 group disabled:opacity-70"
             >
               <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
                 <path
@@ -260,7 +275,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                       required
                       value={nameInput}
                       onChange={e => setNameInput(e.target.value)}
-                      placeholder="e.g. Akshit Patel"
+                      placeholder="e.g. Rahul Sharma"
                       className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                     />
                   </div>
@@ -470,7 +485,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   required
                   value={nameInput}
                   onChange={e => setNameInput(e.target.value)}
-                  placeholder="e.g. Akshit Patel"
+                  placeholder="e.g. Rahul Sharma"
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>

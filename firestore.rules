@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.uid is string &&
+        data.uid == request.auth.uid &&
+        data.email is string &&
+        data.email.size() > 0 &&
+        data.email.size() <= 256 &&
+        data.keys().hasAll(['uid', 'email']);
+    }
+
+    function isValidFinancialProfile(data) {
+      return data.userId is string &&
+        data.userId == request.auth.uid &&
+        data.email is string &&
+        data.email.size() > 0 &&
+        data.email.size() <= 256 &&
+        data.monthlyIncome is number &&
+        data.monthlyExpenses is number &&
+        data.keys().hasAll(['userId', 'email', 'monthlyIncome', 'monthlyExpenses']);
+    }
+
+    // Users Collection: users/{userId}
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUser(incoming());
+      allow update: if isValidId(userId) && isOwner(userId) && isValidUser(incoming()) && incoming().uid == existing().uid;
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // Financial Data Subcollection: users/{userId}/financialData/{dataId}
+      match /financialData/{dataId} {
+        allow get, list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isValidId(dataId) && isOwner(userId) && isValidFinancialProfile(incoming());
+        allow update: if isValidId(userId) && isValidId(dataId) && isOwner(userId) && isValidFinancialProfile(incoming()) && incoming().userId == existing().userId;
+        allow delete: if isValidId(userId) && isValidId(dataId) && isOwner(userId);
+      }
+    }
+  }
+}

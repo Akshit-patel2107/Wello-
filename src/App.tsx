@@ -9,6 +9,15 @@ import {
   saveStoredAuth,
   saveUserProfile,
 } from './services/storageService';
+import {
+  auth,
+  onAuthStateChanged,
+  signOutFirebase,
+  loadUserProfileFromFirestore,
+  saveUserProfileToFirestore,
+  formatFirebaseUser,
+  type FirebaseUser,
+} from './services/firebase';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingFlow } from './components/OnboardingFlow';
 import { HomeScreen } from './components/HomeScreen';
@@ -52,32 +61,70 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Check persistent auth on mount
+  // Check persistent auth and Firebase state on mount
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
     async function initAuth() {
-      const stored = getStoredAuth();
-      if (stored) {
-        setUser(stored);
-        const userProfile = await loadUserProfile(stored.email);
-        if (userProfile && userProfile.monthlyIncome > 0) {
-          setProfile(userProfile);
-          setNeedsOnboarding(false);
-        } else {
-          setNeedsOnboarding(true);
+      // 1. Listen for Firebase Auth state
+      unsubscribe = onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
+        if (fbUser) {
+          const authUser = formatFirebaseUser(fbUser);
+          setUser(authUser);
+          saveStoredAuth(authUser);
+
+          // Try loading from Firestore first
+          let loadedProfile = await loadUserProfileFromFirestore(fbUser.uid);
+          if (!loadedProfile && authUser.email) {
+            loadedProfile = await loadUserProfile(authUser.email);
+          }
+
+          if (loadedProfile && loadedProfile.monthlyIncome > 0) {
+            setProfile(loadedProfile);
+            setNeedsOnboarding(false);
+          } else {
+            setNeedsOnboarding(true);
+          }
+          setIsLoadingAuth(false);
+          return;
         }
-      }
-      setIsLoadingAuth(false);
+
+        // 2. Fall back to local stored auth
+        const stored = getStoredAuth();
+        if (stored) {
+          setUser(stored);
+          const userProfile = await loadUserProfile(stored.email);
+          if (userProfile && userProfile.monthlyIncome > 0) {
+            setProfile(userProfile);
+            setNeedsOnboarding(false);
+          } else {
+            setNeedsOnboarding(true);
+          }
+        }
+        setIsLoadingAuth(false);
+      });
     }
+
     initAuth();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
-  // Handle Google Auth success
+  // Handle Auth success
   const handleAuthenticated = async (authenticatedUser: UserAuth) => {
     setUser(authenticatedUser);
     saveStoredAuth(authenticatedUser);
     setIsLoadingAuth(true);
 
-    const existingProfile = await loadUserProfile(authenticatedUser.email);
+    let existingProfile: FinancialProfile | null = null;
+    if (auth.currentUser?.uid) {
+      existingProfile = await loadUserProfileFromFirestore(auth.currentUser.uid);
+    }
+    if (!existingProfile) {
+      existingProfile = await loadUserProfile(authenticatedUser.email);
+    }
+
     if (existingProfile && existingProfile.monthlyIncome > 0) {
       setProfile(existingProfile);
       setNeedsOnboarding(false);
@@ -99,9 +146,16 @@ export default function App() {
     setProfile(completeProfile);
     setNeedsOnboarding(false);
     await saveUserProfile(user.email, completeProfile);
+    if (auth.currentUser?.uid) {
+      try {
+        await saveUserProfileToFirestore(auth.currentUser.uid, user.email, completeProfile);
+      } catch (e) {
+        console.warn('Firestore onboarding save warning:', e);
+      }
+    }
   };
 
-  // Update profile handler (persists both locally and to server)
+  // Update profile handler (persists locally, to server, and Firestore by Gmail)
   const handleUpdateProfile = async (updates: Partial<FinancialProfile>) => {
     if (!profile || !user) return;
     const updated: FinancialProfile = {
@@ -111,7 +165,18 @@ export default function App() {
     };
     setProfile(updated);
     setSyncStatus('saving');
+
     const ok = await saveUserProfile(user.email, updated);
+
+    // Save to Firestore under user UID and Gmail
+    if (auth.currentUser?.uid) {
+      try {
+        await saveUserProfileToFirestore(auth.currentUser.uid, user.email, updated);
+      } catch (e) {
+        console.warn('Firestore update warning:', e);
+      }
+    }
+
     setSyncStatus(ok ? 'synced' : 'offline');
   };
 
@@ -120,6 +185,15 @@ export default function App() {
     if (!profile || !user) return false;
     setSyncStatus('saving');
     const ok = await saveUserProfile(user.email, profile);
+
+    if (auth.currentUser?.uid) {
+      try {
+        await saveUserProfileToFirestore(auth.currentUser.uid, user.email, profile);
+      } catch (e) {
+        console.warn('Firestore manual sync warning:', e);
+      }
+    }
+
     setSyncStatus(ok ? 'synced' : 'offline');
     return ok;
   };
@@ -155,7 +229,12 @@ export default function App() {
   };
 
   // Sign out
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await signOutFirebase();
+    } catch (e) {
+      console.warn('Firebase sign out:', e);
+    }
     clearStoredAuth();
     setUser(null);
     setProfile(null);

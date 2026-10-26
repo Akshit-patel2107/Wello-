@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile authenticated with Google/Gmail",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID matching request.auth.uid",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "description": "User Gmail address",
+          "format": "email",
+          "maxLength": 256
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name",
+          "maxLength": 128
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "User avatar URL",
+          "maxLength": 1024
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Server timestamp of account creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Server timestamp of last update"
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "FinancialProfile": {
+      "title": "FinancialProfile",
+      "description": "Complete financial portfolio and wealth management data for the authenticated user",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "description": "User Gmail address",
+          "format": "email",
+          "maxLength": 256
+        },
+        "monthlyIncome": {
+          "type": "number",
+          "description": "Total monthly household income in INR"
+        },
+        "incomeSources": {
+          "type": "array",
+          "description": "List of income sources"
+        },
+        "monthlyExpenses": {
+          "type": "number",
+          "description": "Total monthly household expenses in INR"
+        },
+        "expenseCategories": {
+          "type": "object",
+          "description": "Category breakdowns of expenses"
+        },
+        "currentSavings": {
+          "type": "number",
+          "description": "Current liquid savings in INR"
+        },
+        "emergencyFund": {
+          "type": "number",
+          "description": "Dedicated emergency buffer in INR"
+        },
+        "loans": {
+          "type": "array",
+          "description": "List of active loans and EMIs"
+        },
+        "goals": {
+          "type": "array",
+          "description": "Financial goals and milestones"
+        },
+        "investments": {
+          "type": "array",
+          "description": "Investment portfolio items"
+        },
+        "familyMembers": {
+          "type": "array",
+          "description": "Family members for shared budgeting"
+        },
+        "cashExpenses": {
+          "type": "array",
+          "description": "Logged cash expenses"
+        },
+        "progressiveDetails": {
+          "type": "object",
+          "description": "Progressive personalization answers"
+        },
+        "dismissedPopups": {
+          "type": "array",
+          "description": "IDs of dismissed notifications"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Server timestamp of last save"
+        }
+      },
+      "required": ["userId", "email", "monthlyIncome", "monthlyExpenses"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/User",
+      "description": "User profile identified by Firebase UID"
+    },
+    "/users/{userId}/financialData/{dataId}": {
+      "schema": "#/entities/FinancialProfile",
+      "description": "Financial data documents owned strictly by the authenticated user"
+    }
+  }
+}
